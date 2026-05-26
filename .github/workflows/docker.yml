@@ -38,4 +38,4 @@ jobs:
         run: tar xzvf wdcli-installer-linux-x64-v${{ steps.version.outputs.version }}.tar.gz
 
       - name: Build Docker image
-        run: docker build -t wdcli:${{ steps.tag.outputs.tag }} .
+        run: docker build -t wdcli-runner:${{ steps.tag.outputs.tag }} .
