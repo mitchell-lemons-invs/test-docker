@@ -1,0 +1,41 @@
+name: Build Docker Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_candidate:
+        description: Mark this build as a release candidate
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version from installer filename
+        id: version
+        run: |
+          INSTALLER=$(ls wdcli-installer-linux-x64-v*.tar.gz | head -n1)
+          VERSION=$(echo "$INSTALLER" | sed 's/wdcli-installer-linux-x64-v\(.*\)\.tar\.gz/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Build image tag
+        id: tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [ "${{ inputs.release_candidate }}" = "true" ]; then
+            SUFFIX="-rc-$(date -u '+%Y%m%d_%H%M%S')"
+            TAG="${VERSION}${SUFFIX}"
+          else
+            TAG="$VERSION"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Extract wdcli
+        run: tar xzvf wdcli-installer-linux-x64-v${{ steps.version.outputs.version }}.tar.gz
+
+      - name: Build Docker image
+        run: docker build -t wdcli:${{ steps.tag.outputs.tag }} .
