@@ -11,9 +11,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract version from installer filename
         id: version
@@ -38,4 +48,7 @@ jobs:
         run: tar xzvf wdcli-installer-linux-x64-v${{ steps.version.outputs.version }}.tar.gz
 
       - name: Build Docker image
-        run: docker build -t wdcli-runner:${{ steps.tag.outputs.tag }} .
+        run: docker build -t ghcr.io/${{ github.repository_owner }}/wdcli-runner:${{ steps.tag.outputs.tag }} .
+
+      - name: Push Docker image
+        run: docker push ghcr.io/${{ github.repository_owner }}/wdcli-runner:${{ steps.tag.outputs.tag }}
