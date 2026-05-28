@@ -1,8 +1,12 @@
-name: Build Docker Image
+name: Build ArcaneAuditor Docker Image
 
 on:
   workflow_dispatch:
     inputs:
+      version:
+        description: ArcaneAuditor CLI version (e.g. 2.0.0)
+        type: string
+        required: true
       release_candidate:
         description: Mark this build as a release candidate
         type: boolean
@@ -14,6 +18,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -25,17 +30,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract version from installer filename
-        id: version
-        run: |
-          INSTALLER=$(ls wdcli-installer-linux-x64-v*.tar.gz | head -n1)
-          VERSION=$(echo "$INSTALLER" | sed 's/wdcli-installer-linux-x64-v\(.*\)\.tar\.gz/\1/')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
       - name: Build image tag
         id: tag
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
+          VERSION="${{ inputs.version }}"
           if [ "${{ inputs.release_candidate }}" = "true" ]; then
             SUFFIX="-rc-$(date -u '+%Y%m%d_%H%M%S')"
             TAG="${VERSION}${SUFFIX}"
@@ -44,11 +42,14 @@ jobs:
           fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      - name: Extract wdcli
-        run: tar xzvf wdcli-installer-linux-x64-v${{ steps.version.outputs.version }}.tar.gz
+      - name: Download ArcaneAuditor CLI
+        run: wget https://github.com/Developers-and-Dragons/ArcaneAuditor/releases/download/v${{ inputs.version }}/ArcaneAuditor_linux_CLI.tar.gz
+
+      - name: Extract ArcaneAuditor CLI
+        run: tar vzxf ArcaneAuditor_linux_CLI.tar.gz
 
       - name: Build Docker image
-        run: docker build -t ghcr.io/${{ github.repository_owner }}/wdcli-runner:${{ steps.tag.outputs.tag }} .
+        run: docker build -f Dockerfile.arcaneauditor -t ghcr.io/${{ github.repository_owner }}/arcaneauditor-runner:${{ steps.tag.outputs.tag }} .
 
       - name: Push Docker image
-        run: docker push ghcr.io/${{ github.repository_owner }}/wdcli-runner:${{ steps.tag.outputs.tag }}
+        run: docker push ghcr.io/${{ github.repository_owner }}/arcaneauditor-runner:${{ steps.tag.outputs.tag }}
